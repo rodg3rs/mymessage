@@ -1,4 +1,6 @@
-const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+require('dotenv').config();
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { createClient } = require('@libsql/client');
 const qrcode = require('qrcode-terminal');
 const express = require('express');
 const app = express();
@@ -6,33 +8,55 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
+const db = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+
 let sock;
 
-async function startWA() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+async function conectarWA() {
+    // 1. Cria a tabela de sessão se não existir no seu banco atual
+    await db.execute("CREATE TABLE IF NOT EXISTS dWhatsapp (id TEXT PRIMARY KEY, value TEXT)");
+
+    // 2. Tenta carregar sessão do banco
+    const res = await db.execute("SELECT value FROM dWhatsapp WHERE id = 'session'");
+    const credsSalvas = res.rows.length > 0 ? JSON.parse(res.rows[0].value) : null;
+
+    const { state, saveCreds } = await useMultiFileAuthState('auth_temp');
+    if (credsSalvas) state.creds = credsSalvas;
+
     sock = makeWASocket({ auth: state });
 
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', async () => {
+        await saveCreds();
+        await db.execute({
+            sql: "INSERT OR REPLACE INTO dWhatsapp (id, value) VALUES ('session', ?)",
+            args: [JSON.stringify(state.creds)]
+        });
+    });
+
     sock.ev.on('connection.update', (u) => {
         if (u.qr) {
-            console.log("ESCANEIE AQUI:");
+            console.log("--- ESCANEIE O QR CODE ---");
             qrcode.generate(u.qr, { small: true });
-            // Link de emergência caso o desenho quebre no log do Render
-            console.log(`Link do QR: https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(u.qr)}`);
+            console.log(`Link reserva: https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(u.qr)}`);
         }
-        if (u.connection === 'open') console.log("Conectado!");
+        if (u.connection === 'open') console.log("✅ WhatsApp Conectado!");
+        if (u.connection === 'close') conectarWA();
     });
 }
 
-app.post('/enviar-oi', async (req, res) => {
+// Rota para o botão do Oi.html
+app.post('/api/enviar-oi', async (req, res) => {
     try {
-        const jid = req.body.numero + "@s.whatsapp.net";
-        await sock.sendMessage(jid, { text: req.body.texto });
+        const jid = "5519981266942@s.whatsapp.net";
+        await sock.sendMessage(jid, { text: "Oi" });
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, error: e.message });
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 
-startWA();
-app.listen(process.env.PORT || 3000);
+conectarWA();
+app.listen(process.env.PORT || 3000, () => console.log("Servidor Online!"));
