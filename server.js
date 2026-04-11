@@ -52,11 +52,17 @@ async function conectarWA() {
 
     sock.ev.on('connection.update', (u) => {
         const { connection, lastDisconnect, qr } = u;
+
         if (qr) {
-            console.log("--- ESCANEIE O QR CODE ---");
-            console.log(`Link: https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
+            // Isso vai gerar um link clicável direto nos logs do Render
+            console.log("--- QR CODE GERADO ---");
+            console.log(`CLIQUE AQUI PARA ESCANEAR: https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
         }
-        if (connection === 'open') console.log("✅ WhatsApp Conectado!");
+
+        if (connection === 'open') {
+            console.log("✅ WhatsApp Conectado!");
+        }
+
         if (connection === 'close') {
             const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (deveReconectar) conectarWA();
