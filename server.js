@@ -16,25 +16,40 @@ const db = createClient({
 let sock;
 
 async function conectarWA() {
-    // 1. Cria a tabela de sessão se não existir no seu banco atual
-    await db.execute("CREATE TABLE IF NOT EXISTS dWhatsapp (id TEXT PRIMARY KEY, value TEXT)");
-
-    // 2. Tenta carregar sessão do banco
-    const res = await db.execute("SELECT value FROM dWhatsapp WHERE id = 'session'");
-    const credsSalvas = res.rows.length > 0 ? JSON.parse(res.rows[0].value) : null;
-
+    await db.execute("CREATE TABLE IF NOT EXISTS dwhatsapp (id TEXT PRIMARY KEY, value TEXT)");
+    const res = await db.execute("SELECT value FROM dwhatsapp WHERE id = 'session'");
+    
     const { state, saveCreds } = await useMultiFileAuthState('auth_temp');
-    if (credsSalvas) state.creds = credsSalvas;
+    if (res.rows.length > 0) {
+        state.creds = JSON.parse(res.rows[0].value);
+    }
 
-    sock = makeWASocket({ auth: state });
+    sock = makeWASocket({ 
+        auth: state,
+        printQRInTerminal: false 
+    });
 
     sock.ev.on('creds.update', async () => {
         await saveCreds();
         await db.execute({
-            sql: "INSERT OR REPLACE INTO dWhatsapp (id, value) VALUES ('session', ?)",
+            sql: "INSERT OR REPLACE INTO dwhatsapp (id, value) VALUES ('session', ?)",
             args: [JSON.stringify(state.creds)]
         });
     });
+
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect, qr } = update;
+        if (qr) {
+            console.log("--- QR CODE GERADO ---");
+            console.log(`Acesse para escanear: https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
+        }
+        if (connection === 'open') console.log("✅ WhatsApp Conectado!");
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) conectarWA();
+        }
+    });
+}
 
     sock.ev.on('connection.update', (u) => {
         if (u.qr) {

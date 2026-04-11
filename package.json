@@ -1,0 +1,29 @@
+{
+  "name": "mymessage",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rodg3rs/mymessage.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/rodg3rs/mymessage/issues"
+  },
+  "homepage": "https://github.com/rodg3rs/mymessage#readme",
+  "dependencies": {
+    "@libsql/client": "^0.17.2",
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
