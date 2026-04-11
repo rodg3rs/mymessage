@@ -39,7 +39,8 @@ async function conectarWA() {
 
     sock = makeWASocket({ 
         auth: state,
-        printQRInTerminal: false 
+        printQRInTerminal: false,
+        logger: require('pino')({ level: 'silent' }) // Isso vai calar esses logs JSON chatos
     });
 
     sock.ev.on('creds.update', async () => {
@@ -50,22 +51,24 @@ async function conectarWA() {
         });
     });
 
-     sock.ev.on('connection.update', (u) => {
+sock.ev.on('connection.update', (u) => {
         const { connection, lastDisconnect, qr } = u;
 
         if (qr) {
-            // Isso vai gerar um link clicável direto nos logs do Render
-            console.log("--- QR CODE GERADO ---");
-            console.log(`CLIQUE AQUI PARA ESCANEAR: https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
+            console.log("\n\n========================================");
+            console.log("CLIQUE NO LINK ABAIXO PARA O QR CODE:");
+            console.log(`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
+            console.log("========================================\n\n");
         }
 
-        if (connection === 'open') {
-            console.log("✅ WhatsApp Conectado!");
-        }
-
+        if (connection === 'open') console.log("✅ WhatsApp Conectado com Sucesso!");
+        
         if (connection === 'close') {
             const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (deveReconectar) conectarWA();
+            if (deveReconectar) {
+                console.log("🔄 Conexão caiu, tentando reconectar...");
+                conectarWA();
+            }
         }
     });
 }
