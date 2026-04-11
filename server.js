@@ -37,11 +37,11 @@ async function conectarWA() {
         console.log("✅ Sessão carregada do Turso.");
     }
 
+    // Localize esta linha no seu server.js e substitua:
     sock = makeWASocket({ 
-        auth: state,
-        printQRInTerminal: false,
-        logger: require('pino')({ level: 'silent' }) // Isso vai calar esses logs JSON chatos
-    });
+       auth: state,
+       logger: require('pino')({ level: 'silent' }) // Isso silencia o excesso de logs
+   });
 
     sock.ev.on('creds.update', async () => {
         await saveCreds();
@@ -52,25 +52,26 @@ async function conectarWA() {
     });
 
 sock.ev.on('connection.update', (u) => {
-        const { connection, lastDisconnect, qr } = u;
+    const { connection, lastDisconnect, qr } = u;
 
-        if (qr) {
-            console.log("\n\n========================================");
-            console.log("CLIQUE NO LINK ABAIXO PARA O QR CODE:");
-            console.log(`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
-            console.log("========================================\n\n");
-        }
+    if (qr) {
+        console.log("\n========================================");
+        console.log("LINK PARA ESCANEAR O QR CODE:");
+        console.log(`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
+        console.log("========================================\n");
+    }
 
-        if (connection === 'open') console.log("✅ WhatsApp Conectado com Sucesso!");
-        
-        if (connection === 'close') {
-            const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (deveReconectar) {
-                console.log("🔄 Conexão caiu, tentando reconectar...");
-                conectarWA();
-            }
+    if (connection === 'open') console.log("✅ WhatsApp Conectado!");
+    
+    if (connection === 'close') {
+        const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+        if (deveReconectar) {
+            console.log("🔄 Reconectando...");
+            conectarWA();
         }
-    });
+    }
+});
+
 }
 
 app.post('/api/enviar-oi', async (req, res) => {
