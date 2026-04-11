@@ -50,7 +50,7 @@ async function conectarWA() {
         });
     });
 
-    sock.ev.on('connection.update', (u) => {
+     sock.ev.on('connection.update', (u) => {
         const { connection, lastDisconnect, qr } = u;
 
         if (qr) {
