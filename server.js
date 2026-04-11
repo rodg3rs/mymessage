@@ -51,26 +51,29 @@ async function conectarWA() {
         });
     });
 
-sock.ev.on('connection.update', (u) => {
-    const { connection, lastDisconnect, qr } = u;
+sock.ev.on('connection.update', async (u) => {
+        const { connection, lastDisconnect, qr } = u;
 
-    if (qr) {
-        console.log("\n========================================");
-        console.log("LINK PARA ESCANEAR O QR CODE:");
-        console.log(`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
-        console.log("========================================\n");
-    }
-
-    if (connection === 'open') console.log("✅ WhatsApp Conectado!");
-    
-    if (connection === 'close') {
-        const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-        if (deveReconectar) {
-            console.log("🔄 Reconectando...");
-            conectarWA();
+        if (qr) {
+            console.log("\n--- COPIE O LINK ABAIXO E ABRA NO NAVEGADOR ---");
+            console.log(`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
+            console.log("-----------------------------------------------\n");
         }
-    }
-});
+
+        if (connection === 'open') {
+            console.log("✅ WhatsApp Conectado com Sucesso!");
+        }
+        
+        if (connection === 'close') {
+            const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log("🔄 Conexão fechada. Motivo:", lastDisconnect?.error?.message || "Desconhecido");
+            
+            if (deveReconectar) {
+                console.log("⏳ Aguardando 5 segundos para tentar novamente...");
+                setTimeout(() => conectarWA(), 5000); // Dá um fôlego para o servidor
+            }
+        }
+ });
 
 }
 
