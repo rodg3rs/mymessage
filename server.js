@@ -15,16 +15,32 @@ const db = createClient({
 let sock;
 
 async function conectarWA() {
-    // Cria a tabela com nome minúsculo para evitar erros de leitura
+    // 1. Garante que a tabela tenha a estrutura correta (id e value)
     await db.execute("CREATE TABLE IF NOT EXISTS dwhatsapp (id TEXT PRIMARY KEY, value TEXT)");
-    const res = await db.execute("SELECT value FROM dwhatsapp WHERE id = 'session'");
+
+    // 2. Tenta carregar sessão do banco
+    let res;
+    try {
+        res = await db.execute("SELECT value FROM dwhatsapp WHERE id = 'session'");
+    } catch (e) {
+        console.log("Ajustando estrutura da tabela...");
+        // Caso a tabela exista mas esteja sem a coluna, este comando resolve:
+        await db.execute("DROP TABLE IF EXISTS dwhatsapp");
+        await db.execute("CREATE TABLE dwhatsapp (id TEXT PRIMARY KEY, value TEXT)");
+        res = { rows: [] };
+    }
     
     const { state, saveCreds } = await useMultiFileAuthState('auth_temp');
-    if (res.rows.length > 0) {
+    
+    if (res.rows && res.rows.length > 0) {
         state.creds = JSON.parse(res.rows[0].value);
+        console.log("✅ Sessão carregada do Turso.");
     }
 
-    sock = makeWASocket({ auth: state, printQRInTerminal: false });
+    sock = makeWASocket({ 
+        auth: state,
+        printQRInTerminal: false 
+    });
 
     sock.ev.on('creds.update', async () => {
         await saveCreds();
