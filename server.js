@@ -16,10 +16,14 @@ const db = createClient({
 let sock;
 
 async function conectarWA() {
+    // 1. Cria a tabela de sessão (letras minúsculas evitam erros no Turso)
     await db.execute("CREATE TABLE IF NOT EXISTS dwhatsapp (id TEXT PRIMARY KEY, value TEXT)");
+
+    // 2. Tenta carregar sessão do banco
     const res = await db.execute("SELECT value FROM dwhatsapp WHERE id = 'session'");
     
     const { state, saveCreds } = await useMultiFileAuthState('auth_temp');
+    
     if (res.rows.length > 0) {
         state.creds = JSON.parse(res.rows[0].value);
     }
@@ -37,32 +41,21 @@ async function conectarWA() {
         });
     });
 
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
+    sock.ev.on('connection.update', (u) => {
+        const { connection, lastDisconnect, qr } = u;
         if (qr) {
-            console.log("--- QR CODE GERADO ---");
-            console.log(`Acesse para escanear: https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
+            console.log("--- ESCANEIE O QR CODE ---");
+            console.log(`Link para o QR: https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
         }
         if (connection === 'open') console.log("✅ WhatsApp Conectado!");
         if (connection === 'close') {
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) conectarWA();
+            const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (deveReconectar) conectarWA();
         }
     });
 }
 
-    sock.ev.on('connection.update', (u) => {
-        if (u.qr) {
-            console.log("--- ESCANEIE O QR CODE ---");
-            qrcode.generate(u.qr, { small: true });
-            console.log(`Link reserva: https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(u.qr)}`);
-        }
-        if (u.connection === 'open') console.log("✅ WhatsApp Conectado!");
-        if (u.connection === 'close') conectarWA();
-    });
-}
-
-// Rota para o botão do Oi.html
+// Rota para enviar a mensagem
 app.post('/api/enviar-oi', async (req, res) => {
     try {
         const jid = "5519981266942@s.whatsapp.net";
@@ -74,4 +67,4 @@ app.post('/api/enviar-oi', async (req, res) => {
 });
 
 conectarWA();
-app.listen(process.env.PORT || 3000, () => console.log("Servidor Online!"));
+app.listen(process.env.PORT || 3000, () => console.log("Servidor Online na porta 3000"));
