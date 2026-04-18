@@ -64,8 +64,8 @@ async function conectarWA() {
         if (connection === 'close') {
             const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (deveReconectar) {
-                console.log("🔄 Reconectando em 15 segundos...");
-                setTimeout(() => conectarWA(), 15000);
+                console.log("🔄 Reconectando em 30 segundos...");
+                setTimeout(() => conectarWA(), 30000);
             }
         }
     });
