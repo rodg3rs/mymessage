@@ -1,26 +1,30 @@
-async function dispararMensagens() {
-    const btn = document.getElementById('btn-envio-wa');
-    const status = document.getElementById('wa-status');
+<div class="widget-box" style="border: 1px solid #25d366; padding: 20px; color: white; background: #162033;">
+    <h3>🟢 TESTE DE NOTIFICAÇÃO</h3>
+    <button id="btn-envio-wa" onclick="enviarTeste()" style="background: #25d366; padding: 10px; cursor: pointer;">
+        MANDAR "OI" PARA ROGÉRIO
+    </button>
+    <div id="wa-status" style="margin-top: 10px;"></div>
+</div>
 
-    if (!confirm("Enviar 'Oi' de teste para o número configurado?")) return;
-
-    btn.disabled = true;
-    btn.innerText = "ENVIANDO...";
-    status.innerText = "Comunicando com o WhatsApp...";
-
-    try {
-        const response = await fetch('/api/enviar-oi', { method: 'POST' });
-        const data = await response.json();
+<script>
+    async function enviarTeste() {
+        const btn = document.getElementById('btn-envio-wa');
+        const status = document.getElementById('wa-status');
         
-        if(data.success) {
-            status.innerHTML = "<span style='color: #10b981;'>Oi enviado com sucesso!</span>";
-            btn.innerText = "SUCESSO ✅";
-        } else {
-            throw new Error(data.error);
+        btn.disabled = true;
+        status.innerText = "Enviando...";
+
+        try {
+            const response = await fetch('/api/enviar-oi', { method: 'POST' });
+            const data = await response.json();
+            if (data.success) {
+                status.innerHTML = "✅ Mensagem enviada!";
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (e) {
+            status.innerHTML = "❌ Erro: " + e.message;
+            btn.disabled = false;
         }
-    } catch (e) {
-        status.innerHTML = `<span style='color: #ef4444;'>Erro: ${e.message}</span>`;
-        btn.disabled = false;
-        btn.innerText = "TENTAR NOVAMENTE";
     }
-}
+</script>
