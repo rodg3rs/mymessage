@@ -79,7 +79,7 @@ async function conectarWA() {
 app.post('/api/enviar-oi', async (req, res) => {
     if (!estaConectado) return res.status(500).json({ success: false, error: "Aguarde a conexão..." });
     try {
-        await sock.sendMessage("5519981266942@s.whatsapp.net", { text: "Oi" });
+        await sock.sendMessage("551981266942@s.whatsapp.net", { text: "Oi" });
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
