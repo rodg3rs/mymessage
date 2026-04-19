@@ -22,7 +22,7 @@ async function conectarWA() {
     const res = await db.execute("SELECT value FROM dwhatsapp WHERE id = 'session'");
     
     // IMPORTANTE: Usamos um diretório temporário que o Render permite escrever
-    const { state, saveCreds } = await useMultiFileAuthState('/tmp/baileys_auth_v2');
+    const { state, saveCreds } = await useMultiFileAuthState('/tmp/baileys_auth');
     
     if (res.rows.length > 0) {
         state.creds = JSON.parse(res.rows[0].value);
@@ -64,8 +64,8 @@ async function conectarWA() {
         if (connection === 'close') {
             const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
             if (deveReconectar) {
-                console.log("🔄 Reconectando em 30 segundos...");
-                setTimeout(() => conectarWA(), 30000);
+                console.log("🔄 Reconectando em 15 segundos...");
+                setTimeout(() => conectarWA(), 15000);
             }
         }
     });
