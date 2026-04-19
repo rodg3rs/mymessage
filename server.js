@@ -13,20 +13,21 @@ const db = createClient({
 });
 
 let sock;
+let estaConectando = false; // TRAVA DE SEGURANÇA
 
 async function conectarWA() {
-    // Garante a tabela no Turso
-    await db.execute("CREATE TABLE IF NOT EXISTS dwhatsapp (id TEXT PRIMARY KEY, value TEXT)");
+    if (estaConectando) return; // Se já estiver tentando, não inicia outra
+    estaConectando = true;
 
-    // Tenta recuperar a sessão salva
+    await db.execute("CREATE TABLE IF NOT EXISTS dwhatsapp (id TEXT PRIMARY KEY, value TEXT)");
     const res = await db.execute("SELECT value FROM dwhatsapp WHERE id = 'session'");
     
-    // IMPORTANTE: Usamos um diretório temporário que o Render permite escrever
-    const { state, saveCreds } = await useMultiFileAuthState('/tmp/baileys_auth');
+    // Pasta temporária para o Render
+    const { state, saveCreds } = await useMultiFileAuthState('/tmp/baileys_auth_v2');
     
     if (res.rows.length > 0) {
         state.creds = JSON.parse(res.rows[0].value);
-        console.log("✅ Sessão recuperada do Turso.");
+        console.log("✅ Sessão carregada do Turso.");
     }
 
     const { version } = await fetchLatestBaileysVersion();
@@ -34,14 +35,13 @@ async function conectarWA() {
     sock = makeWASocket({ 
        version,
        auth: state,
-       printQRInTerminal: false, // Desativado para não poluir o log do Render
+       printQRInTerminal: false,
        logger: require('pino')({ level: 'silent' }),
        browser: ["Ubuntu", "Chrome", "20.0.04"]
    });
 
     sock.ev.on('creds.update', async () => {
         await saveCreds();
-        // Salva sempre no Turso para persistência real
         await db.execute({
             sql: "INSERT OR REPLACE INTO dwhatsapp (id, value) VALUES ('session', ?)",
             args: [JSON.stringify(state.creds)]
@@ -52,39 +52,38 @@ async function conectarWA() {
         const { connection, lastDisconnect, qr } = u;
 
         if (qr) {
-            console.log("\n--- ESCANEIE O QR CODE NO LINK ABAIXO ---");
+            console.log("\n--- ESCANEIE O QR CODE ---");
             console.log(`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qr)}`);
-            console.log("------------------------------------------\n");
+            estaConectando = false; 
         }
 
         if (connection === 'open') {
             console.log("✅ WhatsApp Conectado!");
+            estaConectando = false;
         }
         
         if (connection === 'close') {
-            const deveReconectar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            estaConectando = false;
+            const codigoErro = lastDisconnect?.error?.output?.statusCode;
+            const deveReconectar = codigoErro !== DisconnectReason.loggedOut;
+            
+            // Se o erro for "Connection Failure" (408/503), aguardamos mais tempo
             if (deveReconectar) {
-                console.log("🔄 Reconectando em 15 segundos...");
-                setTimeout(() => conectarWA(), 15000);
+                console.log("🔄 Reconexão programada para daqui a 30 segundos...");
+                setTimeout(() => conectarWA(), 30000); 
             }
         }
     });
 }
 
-// ROTA PARA O BOTÃO DO HTML (index.html)
-app.post('/enviar-notificacao', async (req, res) => {
-    const { mensagem } = req.body;
-    
+// ROTA QUE O SEU HTML PRECISA PARA O TESTE DO "OI"
+app.post('/api/enviar-oi', async (req, res) => {
     if (!sock || !sock.user) {
-        return res.status(500).json({ success: false, error: "WhatsApp não está conectado." });
+        return res.status(500).json({ success: false, error: "WhatsApp deslogado." });
     }
-
     try {
-        // Exemplo: Enviar para um grupo ou lista de utilizadores da BD
-        // Aqui você faria um loop nos seus usuários do Turso
         const numeroTeste = "5519981266942@s.whatsapp.net"; 
-        await sock.sendMessage(numeroTeste, { text: mensagem });
-        
+        await sock.sendMessage(numeroTeste, { text: "Oi" });
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
